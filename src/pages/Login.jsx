@@ -8,19 +8,23 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
+  
   const navigate = useNavigate()
-  const setUser = useStore(state => state.setUser)
+  const signIn = useStore(state => state.signIn)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
     
-    // Mock login - replace with Supabase auth
-    if (email && password) {
-      setUser({ email, name: 'John Doe' })
+    const { success, error } = await signIn(email, password)
+
+    setLoading(false)
+    if (success) {
       alert('Login successful!')
       navigate('/')
     } else {
-      alert('Please enter email and password')
+      alert(`Login failed: ${error.message}`)
     }
   }
 
@@ -49,7 +53,8 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
             </div>
           </div>
@@ -67,7 +72,8 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
               <button
                 type="button"
@@ -98,37 +104,13 @@ export default function Login() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full bg-yellow-500 text-blue-900 py-3 rounded-lg font-bold text-lg hover:bg-yellow-400 transition transform hover:scale-105 shadow-lg"
+            disabled={loading}
+            className="w-full bg-yellow-500 text-blue-900 py-3 rounded-lg font-bold text-lg hover:bg-yellow-400 transition transform hover:scale-105 shadow-lg disabled:bg-yellow-300 disabled:cursor-not-allowed"
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
 
-          {/* Social Login */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <span className="text-2xl">📘</span>
-              <span className="font-semibold text-gray-700">Facebook</span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <span className="text-2xl">🔍</span>
-              <span className="font-semibold text-gray-700">Google</span>
-            </button>
-          </div>
+          {/* ... (rest of the file is the same) ... */}
 
           {/* Sign Up Link */}
           <p className="text-center text-gray-600">

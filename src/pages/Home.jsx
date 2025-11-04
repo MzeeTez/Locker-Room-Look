@@ -1,38 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import ProductCard from '../components/ProductCard'
 import { useStore } from '../store'
 
-// Mock data - replace with Supabase data
-const mockProducts = [
-  { id: 1, name: 'Team Name Home Jersey 23/24', category: 'Football', price: 50.00, image: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400', stock: 10 },
-  { id: 2, name: 'Team Name Away Jersey', category: 'Football', price: 51.50, image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400', stock: 8 },
-  { id: 3, name: 'National Team Third Kit', category: 'Football', price: 25.00, image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=400', stock: 15 },
-  { id: 4, name: 'Baseball Team Special Edition Jersey', category: 'Baseball', price: 52.00, image: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=400', stock: 5 },
-  { id: 5, name: 'Los Angeles Lakers 2024 City Edition', category: 'Basketball', price: 120.00, image: 'https://images.unsplash.com/photo-1515523110800-9415d13b84a8?w=400', stock: 12 },
-  { id: 6, name: 'Chicago Bulls Classic Jersey', category: 'Basketball', price: 85.00, image: 'https://images.unsplash.com/photo-1587398147684-e5c2e3414bff?w=400', stock: 20 },
-  { id: 7, name: 'New York Yankees Home Jersey', category: 'Baseball', price: 65.00, image: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=400', stock: 18 },
-  { id: 8, name: 'Manchester United Home Kit', category: 'Football', price: 75.00, image: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400', stock: 25 }
-]
-
-const mockCategories = [
-  { id: 1, name: 'Football', image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=400' },
-  { id: 2, name: 'Basketball', image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400' },
-  { id: 3, name: 'Baseball', image: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=400' },
-  { id: 4, name: 'Soccer', image: 'https://images.unsplash.com/photo-1614632537423-1e6c2e7e0aab?w=400' }
-]
-
 export default function Home() {
   const [searchParams] = useSearchParams()
-  const [filteredProducts, setFilteredProducts] = useState(mockProducts)
   
+  // FIX: Select each piece of state individually to prevent infinite loops
+  const products = useStore(state => state.products)
+  const categories = useStore(state => state.categories)
+  const fetchProducts = useStore(state => state.fetchProducts)
+  const fetchCategories = useStore(state => state.fetchCategories)
+  const loading = useStore(state => state.loading)
+
   const searchQuery = searchParams.get('search') || ''
   const category = searchParams.get('category') || ''
 
+  // Fetch data on component mount
+  // We can safely add the stable functions from Zustand to the array
   useEffect(() => {
-    let filtered = mockProducts
+    fetchProducts()
+    fetchCategories()
+  }, [fetchProducts, fetchCategories])
+
+  // Memoize filtered products to avoid re-calculating on every render
+  const filteredProducts = useMemo(() => {
+    let filtered = products
 
     if (searchQuery) {
       filtered = filtered.filter(product =>
@@ -41,13 +36,14 @@ export default function Home() {
     }
 
     if (category) {
+      // Assuming product.category is a string name that matches category.name
+      // If product.category is an ID, you'd match on category.id
       filtered = filtered.filter(product =>
         product.category.toLowerCase() === category.toLowerCase()
       )
     }
-
-    setFilteredProducts(filtered)
-  }, [searchQuery, category])
+    return filtered
+  }, [products, searchQuery, category])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,7 +90,11 @@ export default function Home() {
           )}
         </div>
         
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16 text-gray-500">
+            <p className="text-xl">Loading products...</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             <p className="text-xl">No products found</p>
           </div>
@@ -111,24 +111,30 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 py-16 bg-white rounded-lg my-8">
         <h2 className="text-3xl font-bold text-gray-800 mb-8">Shop by Category</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {mockCategories.map(cat => (
-            <Link
-              key={cat.id}
-              to={`/?category=${cat.name.toLowerCase()}`}
-              className="relative rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition"
-            >
-              <div className="aspect-square">
-                <img
-                  src={cat.image}
-                  alt={cat.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center p-4">
-                  <h3 className="text-white text-xl font-bold">{cat.name}</h3>
+          {categories.length > 0 ? (
+            categories.map(cat => (
+              <Link
+                key={cat.id}
+                to={`/?category=${cat.name.toLowerCase()}`}
+                className="relative rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition"
+              >
+                <div className="aspect-square">
+                  <img
+                    src={cat.image} // Make sure your Supabase 'categories' table has an 'image' column
+                    alt={cat.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                    // Add a fallback image
+                    onError={(e) => { e.target.src = 'https://placehold.co/400x400/60a5fa/FFFFFF?text=Category'; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-center p-4">
+                    <h3 className="text-white text-xl font-bold">{cat.name}</h3>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))
+          ) : (
+            <p className="text-gray-500 col-span-full">Loading categories...</p>
+          )}
         </div>
       </section>
 
@@ -147,3 +153,4 @@ export default function Home() {
     </div>
   )
 }
+

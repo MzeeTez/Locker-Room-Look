@@ -18,11 +18,13 @@ export const useStore = create(
           const { data, error } = await supabase
             .from('products')
             .select('*')
-          if (!error) set({ products: data })
+          if (error) throw error
+          if (data) set({ products: data })
         } catch (error) {
-          console.error('Error fetching products:', error)
+          console.error('Error fetching products:', error.message)
+        } finally {
+          set({ loading: false })
         }
-        set({ loading: false })
       },
 
       // Fetch categories from Supabase
@@ -31,26 +33,31 @@ export const useStore = create(
           const { data, error } = await supabase
             .from('categories')
             .select('*')
-          if (!error) set({ categories: data })
+          if (error) throw error
+          if (data) set({ categories: data })
         } catch (error) {
-          console.error('Error fetching categories:', error)
+          console.error('Error fetching categories:', error.message)
         }
       },
+
+      // --- PROPER CART LOGIC (ID-based) ---
 
       // Add to cart
       addToCart: (product) => {
         const cart = get().cart
-        const existingItem = cart.find(item => item.id === product.id && item.size === product.size)
+        const existingItem = cart.find(item => item.id === product.id)
         
         if (existingItem) {
+          // Item exists, update quantity
           set({
             cart: cart.map(item =>
-              item.id === product.id && item.size === product.size
+              item.id === product.id
                 ? { ...item, quantity: item.quantity + (product.quantity || 1) }
                 : item
             )
           })
         } else {
+          // New item, add to cart
           set({ cart: [...cart, { ...product, quantity: product.quantity || 1 }] })
         }
       },
@@ -62,12 +69,15 @@ export const useStore = create(
 
       // Update quantity
       updateQuantity: (productId, quantity) => {
-        if (quantity <= 0) {
+        const newQuantity = Math.max(0, quantity)
+
+        if (newQuantity === 0) {
+          // Remove item if quantity is 0
           get().removeFromCart(productId)
         } else {
           set({
             cart: get().cart.map(item =>
-              item.id === productId ? { ...item, quantity } : item
+              item.id === productId ? { ...item, quantity: newQuantity } : item
             )
           })
         }
@@ -80,6 +90,8 @@ export const useStore = create(
 
       // Clear cart
       clearCart: () => set({ cart: [] }),
+
+      // --- AUTH ---
 
       // Set user
       setUser: (user) => set({ user }),
@@ -96,13 +108,14 @@ export const useStore = create(
               }
             }
           })
-          if (!error && data.user) {
+          if (error) throw error
+          if (data.user) {
             set({ user: data.user })
             return { success: true, user: data.user }
           }
-          return { success: false, error }
+          return { success: false, error: { message: 'Signup failed.'} }
         } catch (error) {
-          console.error('Sign up error:', error)
+          console.error('Sign up error:', error.message)
           return { success: false, error }
         }
       },
@@ -114,13 +127,14 @@ export const useStore = create(
             email,
             password
           })
-          if (!error && data.user) {
+          if (error) throw error
+          if (data.user) {
             set({ user: data.user })
             return { success: true, user: data.user }
           }
-          return { success: false, error }
+          return { success: false, error: { message: 'Sign in failed.' } }
         } catch (error) {
-          console.error('Sign in error:', error)
+          console.error('Sign in error:', error.message)
           return { success: false, error }
         }
       },
@@ -128,27 +142,33 @@ export const useStore = create(
       // Sign out
       signOut: async () => {
         try {
-          await supabase.auth.signOut()
-          set({ user: null, cart: [] })
+          const { error } = await supabase.auth.signOut()
+          if (error) throw error
+          set({ user: null, cart: [] }) // Clear user and cart on sign out
         } catch (error) {
-          console.error('Sign out error:', error)
+          console.error('Sign out error:', error.message)
         }
       },
 
       // Check session
       checkSession: async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession()
+          const { data: { session }, error } = await supabase.auth.getSession()
+          if (error) throw error
           if (session?.user) {
             set({ user: session.user })
+          } else {
+            set({ user: null })
           }
         } catch (error) {
-          console.error('Session check error:', error)
+          console.error('Session check error:', error.message)
+          set({ user: null })
         }
       }
     }),
     {
       name: 'jersey-shop-storage',
+      // Persist only the cart and user
       partialize: (state) => ({ 
         cart: state.cart,
         user: state.user 

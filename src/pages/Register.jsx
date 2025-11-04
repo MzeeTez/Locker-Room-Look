@@ -12,8 +12,10 @@ export default function Register() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  
   const navigate = useNavigate()
-  const setUser = useStore(state => state.setUser)
+  const signUp = useStore(state => state.signUp)
 
   const handleChange = (e) => {
     setFormData({
@@ -30,13 +32,15 @@ export default function Register() {
       return
     }
 
-    // Mock registration - replace with Supabase auth
-    if (formData.email && formData.password && formData.fullName) {
-      setUser({ email: formData.email, name: formData.fullName })
-      alert('Registration successful!')
+    setLoading(true)
+    const { success, error } = await signUp(formData.email, formData.password, formData.fullName)
+    setLoading(false)
+
+    if (success) {
+      alert('Registration successful! Please check your email to verify your account.')
       navigate('/')
     } else {
-      alert('Please fill in all fields')
+      alert(`Registration failed: ${error.message}`)
     }
   }
 
@@ -66,7 +70,8 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="Enter your full name"
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
             </div>
           </div>
@@ -85,7 +90,8 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="Enter your email"
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
             </div>
           </div>
@@ -104,7 +110,8 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="Create a password"
                 required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
               <button
                 type="button"
@@ -130,7 +137,8 @@ export default function Register() {
                 onChange={handleChange}
                 placeholder="Confirm your password"
                 required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={loading}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-50"
               />
               <button
                 type="button"
@@ -145,9 +153,10 @@ export default function Register() {
           {/* Register Button */}
           <button
             type="submit"
-            className="w-full bg-yellow-500 text-blue-900 py-3 rounded-lg font-bold text-lg hover:bg-yellow-400 transition transform hover:scale-105 shadow-lg"
+            disabled={loading}
+            className="w-full bg-yellow-500 text-blue-900 py-3 rounded-lg font-bold text-lg hover:bg-yellow-400 transition transform hover:scale-105 shadow-lg disabled:bg-yellow-300 disabled:cursor-not-allowed"
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
 
           {/* Login Link */}
